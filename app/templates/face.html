@@ -1,0 +1,121 @@
+<html xmlns="http://www.w3.org/1999/html" >
+<head>
+
+    <link rel="stylesheet" href="https://cdn.webix.com/edge/webix.css" type="text/css">
+    <script src="{{url_for('static', filename='webix.js')}}" type="text/javascript"></script>
+
+    <script src="https://code.jquery.com/jquery-2.1.3.min.js?n=1"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css"
+          integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"
+            integrity="sha512-/Nsx9X4HebavoBvEBuyp3I7od5tA0UzAxs+j83KgC8PU0kgB4XiK4Lfe4y4cgBtaRJQEIFCW+oC506aPT2L1zw=="
+            crossorigin=""></script>
+
+    <title>Построение изохрон</title>
+</head>
+<body>
+
+<script type="text/javascript" charset="utf-8">
+
+
+    var marker, polygon;
+
+    webix.ready(function() {
+
+        function onMapClick(e) {var lat = e.latlng['lat'];
+            var lng = e.latlng['lng'];
+            var type = $$('movingType').getText();
+            var speed = $$('movingType').getValue() / 10;
+            var times = $$('times').getValue();
+            mymap.flyTo([lat, lng], 17);
+            if (marker) marker.remove();
+            if (polygon) polygon.remove();
+            marker = L.marker([lat, lng]).addTo(mymap);
+
+            $.ajax({
+                url: '/find_area',
+                dataType: 'json',
+                data: {
+                    'lat': lat,
+                    'lng': lng,
+                    'moving_type': type,
+                    'travel_speed': speed,
+                    'trip_times': times,
+                },
+                success: function(json) {
+                    polygon = L.polygon(json[0].geometry.coordinates[0]).addTo(mymap);
+
+                    mymap.flyTo([lat, lng], 14);
+                },
+                error: function(json) {
+                    alert(json.responseText())
+                }
+
+            })
+        }
+
+
+        var map_container = {
+            view: 'template',
+            template: function (obj) { return '<div id="map" ' +
+                'style="width: 800px; height: 600px"></div>' },
+            borderless: true,
+            height: 600
+        };
+        var plate = {
+            cols: [
+                {},
+                {
+                    id: 'basicContainer',
+                    borderless: true,
+                    width: 800,
+                    rows:[
+                        map_container,
+                        {
+                            view: 'form',
+                            id: 'basicForm',
+                            borderless: true,
+                            elements:[{   view: 'text',
+                                id: 'times',
+                                name: 'times',
+                                label: 'Время прогулки',
+                                labelPosition: 'top',
+                                validate: function(value) {
+                                    var regex = /^[0-9,]+$/;
+                                    if( !regex.test(phones)) {
+                                        $$('basicForm').markInvalid("times",
+                                            "Введено неверное значение!");
+                                        return false;
+                                    }
+                                    return true;
+                                },
+                                value: '5',
+                                bottomLabel: 'Введите временные ' +
+                                'промежутки через запятую'
+                            }
+                            ]
+                        },{}
+                    ]},
+                {}
+            ]
+        };
+        webix.ui(plate);
+
+        webix.callEvent("onReady", []);
+
+        var mymap = L.map('map').setView([55.76, 37.64], 13);
+        L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+            maxZoom: 18,
+            id: 'mapbox.streets',
+            accessToken: 'pk.eyJ1IjoidmFsa2hhcmIiLCJhIjoiY2poMXpleHJvMGI3MDJxcnl2eXczYzJhaSJ9.9_ZnghDtFQRapCtp4hJPJQ'
+        }).addTo(mymap);
+
+        mymap.on('click', onMapClick);
+
+    });
+
+</script>
+</body>
+</html>
